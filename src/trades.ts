@@ -134,7 +134,7 @@ export class TradeFeed {
     let count = 0, buyMon = 0, sellMon = 0, notional = 0;
     let lastPrice: number | null = null, lastSide: "buy" | "sell" | null = null;
     for (const t of this.trades) {
-      if (t.block <= minBlock) continue;
+      if (t.block <= minBlock || t.block > currentBlock) continue;
       count++;
       if (t.side === "buy") buyMon += t.size; else sellMon += t.size;
       notional += t.size * t.price;

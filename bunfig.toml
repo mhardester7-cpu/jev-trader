@@ -1,2 +1,5 @@
 [install]
 minimumReleaseAge = 0
+
+[test]
+preload = ["./tests/offline.ts"]

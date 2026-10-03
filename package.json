@@ -18,6 +18,10 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "dev": "bun --watch run src/index.ts"
+    "dev": "bun --watch run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "paper:demo": "bun run scripts/paper-demo.ts",
+    "paper:replay": "bun run scripts/paper-replay.ts"
   }
 }

@@ -1,6 +1,10 @@
 const env = (key: string, fallback?: string) => process.env[key] ?? fallback;
 const num = (key: string) => (env(key) ? Number(env(key)) : undefined);
 
+// This branch is paper-only. Never inspect PRIVATE_KEY or infer permission from its presence.
+if (env("DRY_RUN", "true") !== "true") throw new Error("Live trading is disabled: DRY_RUN must be true or unset.");
+if (!["mock", "jev"].includes(env("MODEL", "mock")!)) throw new Error("MODEL must be mock or jev");
+
 export const config = {
   rpcUrl: env("RPC_URL", "https://rpc.monad.xyz")!, // sends, receipts, nonce, gas estimation
   readRpcUrl: env("READ_RPC_URL", "https://rpc.monad.xyz")!, // book reads + eth_blockNumber polling + trade logs
@@ -9,8 +13,7 @@ export const config = {
   market: env("MARKET", "0x065C9d28E428A0db40191a54d33d5b7c71a9C394")!, // Kuru MON-USDC
   /** Kuru MarginAccount this market settles against (slot 73 of the OrderBook proxy; verifiedMarket(market) is true). */
   marginAccount: env("MARGIN_ACCOUNT", "0x2A68ba1833cDf93fa9Da1EEbd7F46242aD8E90c5")!,
-  privateKey: env("PRIVATE_KEY"),
-  dryRun: env("DRY_RUN") === "true" || !env("PRIVATE_KEY"),
+  dryRun: true,
   tradeSizeMon: Number(env("TRADE_SIZE_MON", "200")), // Kuru MON-USDC minimum order is 200 MON
   maxPositionMon: Number(env("MAX_POSITION_MON", "1000")),
   bankrollUsd: Number(env("BANKROLL_USD", "100")), // used for pnlPct
@@ -29,8 +32,20 @@ export const config = {
   refreshBlocks: 200, // how often to refresh the fee estimate, margin balances and the vault check
   horizonBlocks: Number(env("HORIZON_BLOCKS", "100")), // the model is asked about the move over this many blocks (~30 s)
   model: env("MODEL", "mock") as "mock" | "jev",
-  jevModelId: env("JEV_MODEL_ID", "jev-latest")!,
+  jevModelId: env("JEV_MODEL_ID", "jev-1.13.0")!, // pin for reproducibility; aliases can change
   jevUsdPerMTok: 0.042,
   port: Number(env("PORT", "3000")),
   historySize: 1000,
+  paperMakerFeeBps: Number(env("PAPER_MAKER_FEE_BPS", "2")),
+  paperExitFeeBps: Number(env("PAPER_EXIT_FEE_BPS", "5")),
+  paperSlippageBps: Number(env("PAPER_SLIPPAGE_BPS", "5")),
+  paperGasMon: Number(env("PAPER_GAS_MON", "0.0357")),
+  paperParticipation: Number(env("PAPER_PARTICIPATION", "0.25")),
+  maxDrawdownPct: Number(env("MAX_DRAWDOWN_PCT", "5")),
+  stopLossPct: Number(env("STOP_LOSS_PCT", "1")),
+  takeProfitPct: Number(env("TAKE_PROFIT_PCT", "2")),
+  maxDailyLossPct: Number(env("MAX_DAILY_LOSS_PCT", "2")),
+  maxPositionEquityPct: Number(env("MAX_POSITION_EQUITY_PCT", "25")),
+  riskPerTradePct: Number(env("RISK_PER_TRADE_PCT", "0.5")),
+  closeBufferSeconds: Number(env("CLOSE_BUFFER_SECONDS", "60")),
 };

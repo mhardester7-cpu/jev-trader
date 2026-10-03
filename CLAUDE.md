@@ -1,3 +1,7 @@
+# Paper-only research branch
+
+The current user mandate overrides the historical demo requirements below: paper/simulation only. Do not enable wallets, signing, deposits, approvals, live orders, deployment, paid model calls, or scheduled runs. Use offline fixtures for verification. The old real-trade and every-block marketing claims are historical context, not requirements for this branch.
+
 ---
 description: Use Bun instead of Node.js, npm, pnpm, or vite.
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
