@@ -56,6 +56,10 @@ Stops, take-profit, daily-loss, and session-close exits are **local simulated ma
 
 Fees, participation and slippage are estimates, not verified current market parameters. Local one-block expiry is not an on-chain Kuru TTL. Queue competition, reorgs, execution latency, failed transactions, standalone cancellation costs, and market impact need richer data/modeling before economic claims. Forced exits assume sufficient bid liquidity and may be optimistic in stressed markets.
 
+## Original fast-mode setup
+
+See [the setup guide](docs/FAST_SETUP.md) for verified provider capacity/cost options, secure credential prerequisites, and the remaining latency and Jev integration gates. `bun run paper:doctor` is an offline readiness check. The original per-block strategy is selected; the paused slower prototype is not in this branch.
+
 ## Bounded local paper run
 
 Use the [local operating guide](docs/PAPER_OPERATIONS.md) for start, status, stop, recovery, and limits. No API key is needed. The managed runner has no web server and never calls Jev.

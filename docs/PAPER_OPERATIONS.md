@@ -8,7 +8,7 @@ bun run paper:status --source public
 bun run paper:stop --source public
 ```
 
-Bun 1.4.2 is the tested runtime. Public mode uses the documented Goldsky endpoint `https://rpc2.monad.xyz`, chain 143 and Kuru MON-USDC market `0x065C9d28E428A0db40191a54d33d5b7c71a9C394`. It calls only chain/head/header, book/vault/market-parameter reads, and trade-log reads. No credentials or subscriptions are needed. There are at most 25 RPC methods/second and a finite request budget. The default runtime is 900 seconds; the maximum accepted manual run is 3,600 seconds. RPC requests time out after five seconds. There are no retries, schedules, or automatic restarts.
+Bun 1.4.2 is the tested runtime. Public mode uses the documented Goldsky endpoint `https://rpc2.monad.xyz`, chain 143 and Kuru MON-USDC market `0x065C9d28E428A0db40191a54d33d5b7c71a9C394`. It calls only chain/head/header, book/vault/market-parameter reads, and trade-log reads. No credentials or subscriptions are needed. There are at most 25 RPC methods/second and a finite request budget. The default runtime is 900 seconds; the maximum accepted manual run is 3,600 seconds. RPC requests time out after five seconds. There are no retries, schedules, or automatic restarts. A persisted halted account exits before any network request.
 
 `start` launches one detached worker and returns its identity and status. `status` verifies the PID, absolute worker path, and unique run ID with the host process table. `stop` verifies that same identity before signaling; it never kills an unrelated reused PID. A lock prevents duplicate workers for one account. Process-table access must be allowed; a permission failure is not evidence that a worker is stopped.
 
@@ -60,3 +60,5 @@ The free endpoint's observed limits and latency do not support a claim of sustai
 ## Verification
 
 The final offline suite passes 50 tests with 701 assertions, including authentic timestamp/order validation, complete two-block batches, deterministic prefix invariance, ledger persistence/corruption rejection, and owned-process start/status/stop. TypeScript, offline ABI encoding and `git diff --check` pass. The original synthetic report is byte-identical. Tests make no external HTTP calls; the two explicitly authorized operations diagnostics above are separate from the offline suite.
+
+For the original fast-mode provider and Jev setup decisions, use [FAST_SETUP.md](FAST_SETUP.md) and `bun run paper:doctor`. No further public diagnostics were run after the two receipts above.

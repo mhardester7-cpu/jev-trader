@@ -36,10 +36,11 @@ try {
     frames = contents.trim().split(/\r?\n/).map(line => JSON.parse(line));
   }
   session = new PaperSession(directory, sourceId);
+  if (session.paper.halted) { phase = "halted"; haltReason = "Persisted account halt; no public requests made"; }
   state();
-  if (reader) await reader.verifyChain();
-  let index = 0, knownHead = reader ? await reader.head() : 0;
-  while (!stopped && Date.now() < expiresAt) {
+  if (reader && !session.paper.halted) await reader.verifyChain();
+  let index = 0, knownHead = reader && !session.paper.halted ? await reader.head() : 0;
+  while (!stopped && !session.paper.halted && Date.now() < expiresAt) {
     let batch: PaperFrame[], latestHead = 0, readMs = 0;
     if (reader) {
       if (knownHead <= session.paper.lastBlock) {
@@ -58,7 +59,7 @@ try {
       batch = [frames[index++]!];
     }
     for (const frame of batch) {
-      if (stopped) break;
+      if (stopped || Date.now() >= expiresAt) break;
       const previousFrame = session.lastFrame as ChainFrame | null, alreadyHalted = session.paper.halted;
       const current = frame as ChainFrame;
       if (reader && previousFrame?.blockHash && current.book.block === previousFrame.book.block + 1 && current.parentHash !== previousFrame.blockHash) throw new Error("Chain continuity changed; paper account halted");

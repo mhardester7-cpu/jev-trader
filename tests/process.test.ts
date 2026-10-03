@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isPaperProcess } from "../src/paper-process";
 import { syntheticFrames } from "./fixtures";
+import { PaperSession } from "../src/paper-session";
+import { PUBLIC_SOURCE_ID } from "../src/paper-source";
+import { WORKER_PATH } from "../src/paper-process";
 
 const control = resolve(import.meta.dir, "../scripts/paper-control.ts");
 const invoke = async (args: string[]) => {
@@ -39,4 +42,18 @@ test("PID identity mismatch never targets the test process; public mode needs ex
   expect(isPaperProcess({ pid: process.pid, runId: "00000000-0000-0000-0000-000000000000" })).toBe(false);
   const missing = await invoke(["start"]); expect(missing.code).not.toBe(0); expect(missing.err).toContain("Usage");
   const unsafe = await invoke(["start", "--source", "public", "--interval-ms", "1"]); expect(unsafe.code).not.toBe(0);
+});
+
+test("a persisted public halt exits without any network access or balance reset", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "jev-halted-"));
+  try {
+    const account = new PaperSession(dir, PUBLIC_SOURCE_ID);
+    account.step(syntheticFrames(1)[0]!); account.fail();
+    const before = readFileSync(join(dir, "account.json"), "utf8");
+    const worker = Bun.spawn([process.execPath, "--no-env-file", "--preload", resolve(import.meta.dir, "offline.ts"), WORKER_PATH, "--source", "public", "--data-dir", dir, "--run-id", "00000000-0000-0000-0000-000000000001", "--seconds", "1"], { env: { PATH: "/usr/bin:/bin", MODEL: "mock", DRY_RUN: "true" }, stdout: "ignore", stderr: "pipe" });
+    expect(await worker.exited).toBe(0);
+    const status = JSON.parse(readFileSync(join(dir, "status.json"), "utf8"));
+    expect(status.phase).toBe("halted"); expect(status.readQueries).toBe(0); expect(status.haltReason).toContain("no public requests");
+    expect(readFileSync(join(dir, "account.json"), "utf8")).toBe(before);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
