@@ -2,6 +2,10 @@
 
 Audit date: 2026-10-03. Baseline: `b587759e459ea049590102e54a0b07800864cdc3` on `mhardester7-cpu/jev-trader` main. Work was isolated in a fresh clone and `codex/paper-execution-audit`; no other checkouts were modified.
 
+## Follow-up status
+
+PR #1 was subsequently merged after explicit user approval. A separate follow-up adds provenance-recorded ingestion fixtures, equal-second timestamp support, and durable bounded local controls. See [the operating guide](PAPER_OPERATIONS.md) and [source validation](PAPER_DATA_SOURCE.md). The original audit results below describe the initial audit, before these later reads and controls. No Jev evaluation or evidence of profitable trading has been added.
+
 ## Outcome
 
 The repository now has a testable paper intraday execution/accounting foundation. Real trading is disabled. The existing mock signal was preserved, not tuned for a more attractive backtest. There is **no evidence yet that Jev or the mock can trade this market profitably**. No authentic historical dataset, Jev responses, live paper feed run, or paid inference was used.

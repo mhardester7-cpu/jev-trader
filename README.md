@@ -2,7 +2,7 @@
 
 MON-USDC on Kuru/Monad, with a TypeSafe AI Jev adapter and an offline mock heuristic. This branch disables real wallets, signing, deposits, approvals, and order submission. `PRIVATE_KEY` is ignored; `DRY_RUN=false` fails at startup. No environment setting enables live trading.
 
-The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). No historical dataset or Jev evaluation has been supplied. Synthetic checks are software tests, not evidence of investment performance.
+The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). A seven-second authentic ingestion fixture is included; it is too short for strategy evaluation. No Jev evaluation has been performed. Synthetic checks are software tests, not evidence of investment performance.
 
 ## Offline quick start
 
@@ -23,7 +23,7 @@ Replay a locally supplied recording:
 bun run paper:replay path/to/session-frames.jsonl 150 150
 ```
 
-Each JSONL row must contain `{ "timestampMs": 1790856000000, "book": Book, "prints": TradePrint[] }` (types in `src/paper.ts`, `src/market.ts`, and `src/trades.ts`). Include every block, even without prints. Timestamps are UTC epoch milliseconds and must increase. Prints must belong to that row's block and be in chain order. Use raw data from a single session and market, not dashboard summaries. The harness rejects duplicate blocks, future prints, invalid prices, and crossed books. Missing blocks reject evaluation; a time gap over one second halts the simulator. It re-evaluates the **mock**, ignoring recorded model decisions and wall-clock latency; it does not backtest Jev.
+Each JSONL row must contain `{ "timestampMs": 1790856000000, "book": Book, "prints": TradePrint[] }` (types in `src/paper.ts`, `src/market.ts`, and `src/trades.ts`). Include every block, even without prints. Timestamps are UTC epoch milliseconds and must never decrease. Equal timestamps are valid because EVM block timestamps have one-second resolution; block numbers must still increase consecutively. Prints must belong to that row's block and be in chain order. Use raw data from a single session and market, not dashboard summaries. The harness rejects duplicate blocks, future prints, invalid prices, and crossed books. Missing blocks reject evaluation; a time gap over one second halts the simulator. It re-evaluates the **mock**, ignoring recorded model decisions and wall-clock latency; it does not backtest Jev.
 
 The first 150 blocks warm features. Subsequent disjoint 150-block windows start with fresh cash, use only prior/current completed data, and score a frozen strategy with no parameter search. Reports contain the input hash, settings, fills, turnover, costs, equity P&L, liquidation P&L, drawdown, and cash/buy-and-hold benchmarks. These short defaults exercise the harness; use substantially longer independent market recordings for research. Each fold is an independent experiment, not a compounded equity curve.
 
@@ -52,13 +52,25 @@ Stops, take-profit, daily-loss, and session-close exits are **local simulated ma
 - A print must strictly trade through the limit on the opposite aggressor side. A touch does not prove queue priority. Eligible fill volume is capped at `PAPER_PARTICIPATION` (default 25%) and remaining order size. Maker execution stays at the limit.
 - Charge estimated gas on every placed quote, including unfilled quotes; accumulate historical USD costs. Charge maker fees and actual model token costs. The mock has zero token cost.
 - Mark equity at mid; separately estimate liquidation at bid minus exit fee, slippage, and one gas charge. Drawdown uses this liquidation estimate. A halt cannot guarantee a maximum loss during jumps/outages.
-- An incomplete trade poll, invalid input, or model error halts the session. Stale model responses produce no order. Restarts begin a new paper ledger, so they also reset session loss accounting.
+- An incomplete trade poll, invalid input, or model error halts the session. Stale model responses produce no order. The managed local runner below persists its ledger and loss accounting across restarts. The legacy API loop starts a separate ledger each time.
 
 Fees, participation and slippage are estimates, not verified current market parameters. Local one-block expiry is not an on-chain Kuru TTL. Queue competition, reorgs, execution latency, failed transactions, standalone cancellation costs, and market impact need richer data/modeling before economic claims. Forced exits assume sufficient bid liquidity and may be optimistic in stressed markets.
 
-## Optional read-only market feed
+## Bounded local paper run
 
-`bun run start` starts the existing API/dashboard backend with public RPC reads and paper orders. It is **not offline** and was not run during this audit. Keep `MODEL=mock`; do not supply wallet credentials. `MODEL=jev` makes billable inference requests and requires separately authorized provider access. No API key is needed for the offline workflow.
+Use the [local operating guide](docs/PAPER_OPERATIONS.md) for start, status, stop, recovery, and limits. No API key is needed. The managed runner has no web server and never calls Jev.
+
+```sh
+bun run paper:start --source public --seconds 900
+bun run paper:status --source public
+bun run paper:stop --source public
+```
+
+This explicitly starts up to 15 minutes of public Monad reads with the unchanged mock strategy. It simulates all orders locally, persists cash/inventory/risk state, and defaults to a $100 paper account. It requires this Mac to stay awake and connected; the phone can request these controls through its connected task, but does not run the bot. A reported process identity alone is not a healthy feed: inspect phase, market-data age, latest block, and any error.
+
+## Legacy read-only market feed
+
+`bun run start` is the separate legacy API/dashboard backend, not the managed runner. It starts with public RPC reads and paper orders. It is **not offline** and was not run during this audit. Keep `MODEL=mock`; do not supply wallet credentials. `MODEL=jev` makes billable inference requests and requires separately authorized provider access. No API key is needed for the offline workflow.
 
 Recordings go to `data/<session UUID>-frames.jsonl` and `data/<session UUID>-events.jsonl`, which are gitignored. Live-feed timestamps are observation times, not authenticated block timestamps. Session separation prevents accidental concatenation on restart. No API keys are recorded. REST/SSE routes remain `/`, `/history`, and `/events`; `totals` now includes fees, cash, liquidation P&L, drawdown, daily loss pause, and overnight breaches. `fills` preserves all fills, including mixed-side stop exits. The legacy `fill` is null for mixed-side blocks. The existing dashboard uses the original compatible fields; inspect the API/report for detailed controls and halt status.
 
@@ -76,4 +88,6 @@ The Jev adapter uses `TYPESAFE_AI_API_KEY` (AI SDK naming) and defaults to pinne
 | `src/market.ts`, `src/book.ts` | Block-pinned reads and tick-aligned quotes; wallet is always null |
 | `tests/` | Offline regression tests; unexpected fetch calls fail |
 
-Legacy transaction encoding/receipt code remains in `Market` for reference but is unreachable with its fixed null wallet. Historical `SPEC.md` and earlier demo marketing do not authorize real trading. No deployment, scheduled run, or merge is included in this work.
+The web app still defaults to the pre-existing Railway API URL; it is not connected to the managed local account. No local dashboard has been exposed or deployed.
+
+Legacy transaction encoding/receipt code remains in `Market` for reference but is unreachable with its fixed null wallet. Historical `SPEC.md` and earlier demo marketing do not authorize real trading. The initial safety changes were merged in PR #1 after approval. These local operating changes require separate review; they add no deployment or schedule.
