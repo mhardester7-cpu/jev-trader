@@ -1,30 +1,20 @@
-// Prove the hand-encoded batchUpdate calldata round-trips through the Kuru ABI and that quote prices
-// are tick aligned and never cross, without sending anything. Builds + signs a bid and an ask with a
-// random wallet and decodes the calldata back.
-// Run: BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 bun run scripts/dry-encode.ts [rpcUrl]
+// Offline ABI encoding regression. No wallet, key, signing, or RPC.
 import { ethers } from "ethers";
-import * as Kuru from "@kuru-labs/kuru-sdk";
 import OrderBookAbi from "@kuru-labs/kuru-sdk/abi/OrderBook.json";
+import { config } from "../src/config";
+import { Market } from "../src/market";
+import { frame } from "../tests/fixtures";
 
-// A throwaway key, and never a dry run: this script signs (locally) but never sends. Set before
-// src/config is imported, so these imports must stay dynamic (static ones are hoisted above this).
-process.env.PRIVATE_KEY = ethers.Wallet.createRandom().privateKey;
-process.env.DRY_RUN = "false";
-const { config } = await import("../src/config");
-const { Market } = await import("../src/market");
-
-const RPC = process.argv[2] ?? config.readRpcUrl;
-const provider = new ethers.providers.StaticJsonRpcProvider(RPC, config.chainId);
 const iface = new ethers.utils.Interface(OrderBookAbi.abi);
 
 const market = new Market();
-market.params = await Kuru.ParamFetcher.getMarketParams(provider, config.market);
-const book = await market.readBook();
+market.params = { pricePrecision: ethers.BigNumber.from(100000000), sizePrecision: ethers.BigNumber.from("10000000000"), tickSize: ethers.BigNumber.from(100) } as typeof market.params;
+const book = frame(1).book;
 const size = config.tradeSizeMon;
 const priceDec = market.params.pricePrecision.toString().length - 1, sizeDec = market.params.sizePrecision.toString().length - 1;
 const tick = Number(market.params.tickSize.toString());
 console.log(`market ${config.market} · block ${book.block} · bid ${book.bid} ask ${book.ask} · tick ${tick / 10 ** priceDec} · size ${size} MON · ${config.quoteInsideTicks} tick inside`);
-console.log(`wallet ${market.address} (random, unfunded)\n`);
+console.log("offline fixture, no wallet");
 
 let failed = false;
 const check = (label: string, ok: boolean) => { console.log(`${ok ? "ok  " : "FAIL"} ${label}`); if (!ok) failed = true; };
@@ -32,9 +22,7 @@ for (const side of ["buy", "sell"] as const) {
   const price = market.quotePrice(side, book);
   const cancel = [123, 456];
   const tx = market.buildTx(side, size, price, cancel);
-  const signed = await market.wallet!.signTransaction(tx);
-  const parsed = ethers.utils.parseTransaction(signed);
-  const d = iface.decodeFunctionData("batchUpdate", parsed.data);
+  const d = iface.decodeFunctionData("batchUpdate", tx.data!);
   // ethers decodes uint32 as number and uint96/uint40 as BigNumber; normalise everything to BigNumber.
   const bn = (xs: unknown[]) => xs.map((x) => ethers.BigNumber.from(x as ethers.BigNumberish));
   const [bp, bs, sp, ss, ids] = [bn(d[0]), bn(d[1]), bn(d[2]), bn(d[3]), bn(d[4])];
@@ -49,8 +37,8 @@ for (const side of ["buy", "sell"] as const) {
   check(`${side} size is ${size} MON`, sizes[0]!.eq(ethers.utils.parseUnits(String(size), sizeDec)));
   check(`${side} cancels ${cancel}`, ids.length === 2 && ids[0]!.eq(123) && ids[1]!.eq(456));
   check(`${side} post only`, postOnly === true);
-  check(`${side} value is 0 (margin funded)`, parsed.value.isZero());
-  check(`${side} type-2 to the market`, parsed.type === 2 && parsed.to?.toLowerCase() === config.market.toLowerCase());
+  check(`${side} value is 0 (margin funded)`, ethers.BigNumber.from(tx.value).isZero());
+  check(`${side} type-2 to the market`, tx.type === 2 && String(tx.to).toLowerCase() === config.market.toLowerCase());
   console.log();
 }
 console.log(failed ? "MISMATCH" : "all checks passed");

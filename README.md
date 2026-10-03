@@ -1,70 +1,79 @@
-# jev-trader
+# jev-trader: paper-only day trading
 
-One decision every Monad block. A TypeSafe Jev model watches the Kuru MON-USDC order book and answers buy or sell every ~300 ms. Every block posts a real post-only limit order on that side, one tick inside the touch, replacing the last one. Fills happen when a taker hits it, so the bot earns the spread instead of paying it. A small server streams every block to the dashboard.
+MON-USDC on Kuru/Monad, with a TypeSafe AI Jev adapter and an offline mock heuristic. This branch disables real wallets, signing, deposits, approvals, and order submission. `PRIVATE_KEY` is ignored; `DRY_RUN=false` fails at startup. No environment setting enables live trading.
 
-## Run
+The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). No historical dataset or Jev evaluation has been supplied. Synthetic checks are software tests, not evidence of investment performance.
 
-    cp .env.example .env
-    bun install
-    bun run start
+## Offline quick start
 
-With no `PRIVATE_KEY` it dry-runs: real book, real decisions, simulated fills. Set `MODEL=jev` and `TYPESAFE_AI_API_KEY` to use Jev; the default `mock` is a momentum heuristic stand-in.
+Use Bun 1.4.2 and the committed lockfile. Installation downloads dependencies; the commands after it need no network or credentials.
 
-## Endpoints
+```sh
+bun install --frozen-lockfile --ignore-scripts
+bun test
+bun run typecheck
+bun run paper:demo
+```
 
-Deployed (dry run, mock model): https://jev-trader-production.up.railway.app
+`paper:demo` prints the unchanged mock heuristic's results on a fixed synthetic fixture. Base and higher-cost assumptions are included. The [committed report](docs/paper-evaluation.synthetic.json) is reproducible.
 
-- `GET /` snapshot: model, wallet, dryRun, latest block event
-- `GET /history` last 1000 block events
-- `GET /events` SSE: `snapshot` on connect, then one `block` event per block, plus a `fill` event whenever a live order's receipt lands
+Replay a locally supplied recording:
 
-Every event (see `src/trader.ts` for types):
+```sh
+bun run paper:replay path/to/session-frames.jsonl 150 150
+```
 
-    {
-      "block": 105488269, "ts": 1789593630676,
-      "mid": 0.022636, "bestBid": 0.022628, "bestAsk": 0.022644, "spreadBps": 7.07,
-      "decision": { "action": "buy", "probabilities": { "buy": 0.77, "sell": 0.23, "hold": 0 }, "upIn10": 0.77, "latencyMs": 81, "late": false },
-      "quote": { "side": "buy", "price": 0.022629, "size": 200, "txHash": "0x…", "gasMon": 0.0357, "cancel": [100295801], "status": "sent", "orderId": null, "capped": false },
-      "fill": null,
-      "resting": { "bidMon": 200, "askMon": 200 },
-      "position": { "side": "short", "size": 200, "entryPrice": 0.022633, "unrealizedUsd": -0.0006, "unrealizedMon": -0.027 },
-      "totals": { "blocks": 3, "decisions": 3, "quotes": 3, "fills": 1, "reverted": 0, "lateBlocks": 0, "jevUsd": 0.000004, "gasMon": 0.107, "gasUsd": 0.0024, "realizedUsd": 0, "pnlUsd": -0.003, "pnlMon": -0.13, "pnlPct": -0.003 }
-    }
+Each JSONL row must contain `{ "timestampMs": 1790856000000, "book": Book, "prints": TradePrint[] }` (types in `src/paper.ts`, `src/market.ts`, and `src/trades.ts`). Include every block, even without prints. Timestamps are UTC epoch milliseconds and must increase. Prints must belong to that row's block and be in chain order. Use raw data from a single session and market, not dashboard summaries. The harness rejects duplicate blocks, future prints, invalid prices, and crossed books. Missing blocks reject evaluation; a time gap over one second halts the simulator. It re-evaluates the **mock**, ignoring recorded model decisions and wall-clock latency; it does not backtest Jev.
 
-Every block the model is asked about the move over `HORIZON_BLOCKS` (default 100, ~30 s) and answers `buy` or `sell`. `quote` is the order that block put on the book: a post-only limit order of `TRADE_SIZE_MON` on that side, `QUOTE_INSIDE_TICKS` inside the touch (clamped to the touch when the spread is too tight), in one `batchUpdate` that also cancels everything we had resting (`cancel`). `hold` appears only with `decision.late: true`, when the model missed the block and nothing was posted. When the position cap (or, live, margin funds) blocks a side, the quote goes on the other side with `capped: true` and `probabilities` still show the model's call. `resting` is our size known to be on the book after this block. `upIn10` equals the buy probability.
+The first 150 blocks warm features. Subsequent disjoint 150-block windows start with fresh cash, use only prior/current completed data, and score a frozen strategy with no parameter search. Reports contain the input hash, settings, fills, turnover, costs, equity P&L, liquidation P&L, drawdown, and cash/buy-and-hold benchmarks. These short defaults exercise the harness; use substantially longer independent market recordings for research. Each fold is an independent experiment, not a compounded equity curve.
 
-Live sends are fired and forgotten, so the `block` event carries the **intent**: `status: "sent"`, `gasMon` is `gasLimit x (last known base fee + priority)`. Monad charges the gas limit, so that is the real cost whether the order lands or not. The receipt arrives a block or two later as its own SSE event:
+## Intraday controls
 
-    event: quote
-    data: { "block": 105488269, "quote": { …, "status": "placed", "orderId": 100295812, "gasMon": 0.0357 } }
+MON-USDC is a crypto pair; UTC calendar days define the paper sessions, rather than equity exchange hours. Defaults are explicit research choices, not optimized settings:
 
-`status` becomes `placed` (with the order id) or `reverted` (the book moved through the price before the tx landed, or a cancelled order had already filled). No receipt after 10 blocks gives `lost`. Fills are not in our own transactions: someone else's taker order hits our resting one, and the Trade log for it arrives via the same `eth_getLogs` poll that feeds the model. Each block with fills gets its own SSE event, and `position`, `realizedUsd` and `fills` update then:
+| Control | Default |
+| --- | --- |
+| Initial cash / MON | $100 / 0 MON |
+| Requested order size / minimum passive order | Up to 200 MON / 200 MON |
+| Inventory cap | Lower of 1,000 MON and 25% of marked equity |
+| Entry risk budget | 0.5% of equity divided by 1% stop distance |
+| Stop / take-profit triggers | 1% below / 2% above average entry, observed at bid |
+| Daily loss limit | 2% of UTC session starting liquidation equity |
+| Overall drawdown halt | 5% from peak liquidation equity |
+| Session close | Flatten at the first observed snapshot at/after 23:59 UTC; no new entries until the next UTC day |
 
-    event: fill
-    data: { "block": 105488271, "fill": { "side": "buy", "size": 200, "price": 0.022629, "txHash": "0x…", "orderId": 100295812, "simulated": false } }
+Entry size is limited by cash including fees and gas, inventory allocation, and stop risk. If sizing falls below the passive minimum, skip the order. An unavailable model side is skipped, not reversed. Stop sizing is approximate: jumps and costs can exceed the chosen risk budget.
 
-`txHash` is the taker's transaction. In a dry run the quote is `status: "sim"`: the order rests for one block and a real print crossing its price fills it (`simulated: true`).
+Stops, take-profit, daily-loss, and session-close exits are **local simulated market exits** at the next observed bid less assumed slippage, plus fee and gas. They can close residual inventory below the passive order minimum. A stop trigger is not a guaranteed price. Daily loss pauses entries until the next UTC session; the overall drawdown halt remains latched. An outage cancels local orders and halts; at the next valid snapshot it closes observed inventory. If the outage crosses midnight, `overnightBreaches` discloses the carry. The system never invents a fill at an unobserved midnight price.
 
-## Layout
+## Fill and cost assumptions
 
-    src/config.ts   env
-    src/chain.ts    block feed (WebSocket newHeads + polling backstop, newest block only), raw RPC
-    src/book.ts     one-eth_call order book reader (decodes getL2Book, merges the AMM vault)
-    src/market.ts   Kuru: read book, hand-encoded batchUpdate (cancel + post-only place), margin deposits, local nonce, async confirmation
-    src/model.ts    Model interface, JevModel (AI SDK experimental_evaluate), MockModel
-    src/trader.ts   the loop: one in flight, hold when late, position and P&L accounting
-    src/server.ts   Bun.serve: snapshot, history, SSE
+- Process the completed block and its prints before deciding. An order from block N is eligible only in N+1, then expires locally. Same-block fills are impossible.
+- A print must strictly trade through the limit on the opposite aggressor side. A touch does not prove queue priority. Eligible fill volume is capped at `PAPER_PARTICIPATION` (default 25%) and remaining order size. Maker execution stays at the limit.
+- Charge estimated gas on every placed quote, including unfilled quotes; accumulate historical USD costs. Charge maker fees and actual model token costs. The mock has zero token cost.
+- Mark equity at mid; separately estimate liquidation at bid minus exit fee, slippage, and one gas charge. Drawdown uses this liquidation estimate. A halt cannot guarantee a maximum loss during jumps/outages.
+- An incomplete trade poll, invalid input, or model error halts the session. Stale model responses produce no order. Restarts begin a new paper ledger, so they also reset session loss accounting.
 
-## The 300 ms budget
+Fees, participation and slippage are estimates, not verified current market parameters. Local one-block expiry is not an on-chain Kuru TTL. Queue competition, reorgs, execution latency, failed transactions, standalone cancellation costs, and market impact need richer data/modeling before economic claims. Forced exits assume sufficient bid liquidity and may be optimistic in stressed markets.
 
-A decision and an order have to fit in one block, so the hot loop makes exactly two RPC round trips:
-one `eth_call` for the book (~18 ms on the public RPC, `READ_RPC_URL`) and one `eth_sendRawTransaction`
-(`RPC_URL`), which returns as soon as the tx is accepted. Nothing else is on the path — no
-`eth_estimateGas` (Monad charges gas on the limit, so the limit is hardcoded or derived once at
-startup), no `eth_sendRawTransactionSync` (it blocks until the tx is Proposed), no gas price lookup
-(static type-2 fees: `MAX_FEE_GWEI` cap, 2 gwei priority; the effective price is base + priority).
-Receipts, the fee estimate and the vault check run off the hot path on later blocks. Measured in a
-dry run with the mock model: read p50 18 ms, whole loop p50 100 ms (80 ms of it the mock's inference stand-in).
+## Optional read-only market feed
 
-    bun run scripts/bench-read.ts     # book reader vs the SDK: exactness and latency
-    bun run scripts/dry-encode.ts     # signs a buy and a sell offline, asserts the calldata matches the SDK
+`bun run start` starts the existing API/dashboard backend with public RPC reads and paper orders. It is **not offline** and was not run during this audit. Keep `MODEL=mock`; do not supply wallet credentials. `MODEL=jev` makes billable inference requests and requires separately authorized provider access. No API key is needed for the offline workflow.
+
+Recordings go to `data/<session UUID>-frames.jsonl` and `data/<session UUID>-events.jsonl`, which are gitignored. Live-feed timestamps are observation times, not authenticated block timestamps. Session separation prevents accidental concatenation on restart. No API keys are recorded. REST/SSE routes remain `/`, `/history`, and `/events`; `totals` now includes fees, cash, liquidation P&L, drawdown, daily loss pause, and overnight breaches. `fills` preserves all fills, including mixed-side stop exits. The legacy `fill` is null for mixed-side blocks. The existing dashboard uses the original compatible fields; inspect the API/report for detailed controls and halt status.
+
+The Jev adapter uses `TYPESAFE_AI_API_KEY` (AI SDK naming) and defaults to pinned `jev-1.13.0`. TypeSafe's standalone SDK examples use `TYPESAFE_API_KEY`; these are different variable names. Before a future authorized Jev test, inject the key through a local secret manager/process environment, never chat or git, and establish a request/spend budget. No scoped or free paper endpoint was verified in the reviewed TypeSafe documentation. Jev evaluates decisions; it is not the exchange.
+
+## Code map
+
+| File | Responsibility |
+| --- | --- |
+| `src/paper.ts` | Deterministic fills, spot ledger, costs, UTC sessions and risk controls; no I/O |
+| `src/replay.ts` | Frozen mock strategy, chronological evaluation and benchmarks |
+| `src/state.ts` | Shared causal market features |
+| `src/trader.ts` | Sequential paper loop, freshness gates, session recordings |
+| `src/model.ts` | Jev adapter and unchanged mock signal |
+| `src/market.ts`, `src/book.ts` | Block-pinned reads and tick-aligned quotes; wallet is always null |
+| `tests/` | Offline regression tests; unexpected fetch calls fail |
+
+Legacy transaction encoding/receipt code remains in `Market` for reference but is unreachable with its fixed null wallet. Historical `SPEC.md` and earlier demo marketing do not authorize real trading. No deployment, scheduled run, or merge is included in this work.

@@ -44,13 +44,13 @@ const QUESTIONS = {
     type: "choice",
     instructions: {
       question: "Will MON be higher or lower than the current mid after `horizonBlocks` more blocks?",
-      goal: "Trade MON-USDC on Kuru. Blocks are ~300ms; `horizonBlocks` (~30 s) is the horizon. A decision is made every few blocks and held until the next one. The trade crosses the spread (`spreadBps`), so the move must beat that cost.",
-      timing: "The order executes as an immediate-or-cancel market order in the next block.",
-      inputs: "Taker flow is the strongest signal: `trades.cvdMon` (taker buys minus taker sells over the horizon), `trades.lastSide` and `recentTrades` show who is hitting the book. `depth` and `book` show resting liquidity per side at several distances from mid; thin depth on one side means price moves easily that way. `returnsBps` and `recentMids` show the path over the horizon. If `allowed.buy` is false the trade will be a sell regardless, and vice versa.",
+      goal: "Evaluate MON-USDC for a paper-only post-only limit order, replaced each block. The horizon is `horizonBlocks`. Direction alone does not establish net profitability after execution costs and adverse selection.",
+      timing: "The order may rest in the next block and may never fill. No immediate execution is assumed.",
+      inputs: "Consider taker flow: `trades.cvdMon` (taker buys minus taker sells over the horizon), `trades.lastSide` and `recentTrades` show who is hitting the book. `depth` and `book` show resting liquidity per side at several distances from mid; thin depth on one side means price moves easily that way. `returnsBps` and `recentMids` show the path over the horizon. An unavailable side is skipped, never reversed into an unwanted trade.",
     },
     criteria: {
-      buy: "Buy MON now: mid more likely to be higher after `horizonBlocks` blocks, by more than the spread.",
-      sell: "Sell MON now: mid more likely to be lower after `horizonBlocks` blocks, by more than the spread.",
+      buy: "Buy MON now: mid more likely to be higher after `horizonBlocks` blocks, relative to the current mid.",
+      sell: "Sell MON now: mid more likely to be lower after `horizonBlocks` blocks, relative to the current mid.",
     },
   },
 } as const;
@@ -62,7 +62,7 @@ export class JevModel implements Model {
 
   async decide(state: TradeState): Promise<Decision> {
     const t0 = performance.now();
-    const r = await experimental_evaluate({ model: this.model, state: state as any, questions: QUESTIONS, maxRetries: 0 });
+    const r = await experimental_evaluate({ model: this.model, state: state as any, questions: QUESTIONS, maxRetries: 0, abortSignal: AbortSignal.timeout(250) });
     const a = r.answers.direction;
     const p = a.probabilities ?? { buy: 0, sell: 0, [a.choice]: 1 };
     const buy = p.buy ?? 0, sell = p.sell ?? 0;
@@ -76,32 +76,38 @@ export class JevModel implements Model {
   }
 }
 
-/** Deterministic stand-in: momentum + imbalance + mean reversion toward flat. */
+/** Deterministic stand-in only; not a fitted or validated predictor. */
 export class MockModel implements Model {
   readonly name = "mock";
 
   async decide(state: TradeState): Promise<Decision> {
     const t0 = performance.now();
-    // momentum + book imbalance + noise, pulled back toward flat so it trades both ways
-    const flow = state.trades.buyMon + state.trades.sellMon ? state.trades.cvdMon / (state.trades.buyMon + state.trades.sellMon) : 0;
-    const signal = state.returnsBps.last20 / 8 + state.bookImbalance * 1.5 + flow * 2 + this.noise(state.block);
-    const buy = 1 / (1 + Math.exp(-signal)); // binary softmax
-    const probabilities = { buy, sell: 1 - buy, hold: 0 };
-    const action: Action = buy >= 0.5 ? "buy" : "sell";
+    // Preserve the existing heuristic; no parameter tuning.
+    const { action, probabilities, buy } = mockSignal(state);
     await Bun.sleep(80); // stand in for inference time so the pipeline behaves like production
     return {
       action, probabilities,
       upIn10: buy,
       latencyMs: performance.now() - t0,
-      inputTokens: Math.round(JSON.stringify(state).length / 4),
+      inputTokens: 0,
     };
   }
 
-  private noise(block: number) {
-    let h = block * 2654435761 >>> 0;
-    h ^= h >>> 15; h = (h * 2246822519) >>> 0; h ^= h >>> 13;
-    return ((h % 1000) / 1000 - 0.5) * 3;
-  }
+}
+
+export function mockSignal(state: TradeState) {
+  const flow = state.trades.buyMon + state.trades.sellMon ? state.trades.cvdMon / (state.trades.buyMon + state.trades.sellMon) : 0;
+  const signal = state.returnsBps.last20 / 8 + state.bookImbalance * 1.5 + flow * 2 + mockNoise(state.block);
+  const buy = 1 / (1 + Math.exp(-signal)); // binary softmax
+  const probabilities = { buy, sell: 1 - buy, hold: 0 };
+  const action: Action = buy >= 0.5 ? "buy" : "sell";
+  return { action, probabilities, buy };
+}
+
+function mockNoise(block: number) {
+  let h = block * 2654435761 >>> 0;
+  h ^= h >>> 15; h = (h * 2246822519) >>> 0; h ^= h >>> 13;
+  return ((h % 1000) / 1000 - 0.5) * 3;
 }
 
 export const createModel = (): Model => (config.model === "jev" ? new JevModel() : new MockModel());

@@ -68,7 +68,8 @@ interface Pending { block: number; quote: Quote; gasLimit: ethers.BigNumber }
 export class Market {
   readonly provider = new ethers.providers.StaticJsonRpcProvider(config.rpcUrl, config.chainId);
   /** null in a dry run (no key, or DRY_RUN=true): nothing is signed, nothing is sent. */
-  readonly wallet = config.dryRun ? null : new ethers.Wallet(config.privateKey!, this.provider);
+  // No environment variable can enable signing, approvals, deposits, or order submission.
+  readonly wallet: ethers.Wallet | null = null;
   params!: Kuru.MarketParams; // public so scripts can build txs without init()
   /** Margin account balances, refreshed every `config.refreshBlocks`. Limit orders draw from here. */
   margin = { mon: 0, usdc: 0 };
@@ -109,8 +110,8 @@ export class Market {
   }
 
   /** One eth_call (two batched into one HTTP request once the vault is live). */
-  readBook(): Promise<Book> {
-    return fetchBook(config.readRpcUrl, config.market, this.params, { vault: this.useVault });
+  readBook(block?: number): Promise<Book> {
+    return fetchBook(config.readRpcUrl, config.market, this.params, { vault: this.useVault, blockTag: block === undefined ? "latest" : "0x" + block.toString(16) });
   }
 
   /**

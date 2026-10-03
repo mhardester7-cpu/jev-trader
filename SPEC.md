@@ -1,3 +1,5 @@
+> Historical demo specification. This branch now targets paper-only correctness and evaluation. See README.md and docs/PAPER_AUDIT.md for current behavior; real trading and deployment are disabled.
+
 # Jev Trader — Product Spec
 
 ## One line
