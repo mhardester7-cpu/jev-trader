@@ -2,6 +2,8 @@
 
 Checked 2026-10-03. The selected strategy is the original per-block MON-USDC market-making policy, with paper-only execution, funded spot accounting, fees/gas, causal fills, persistence and intraday risk controls. The paused five-second alternative is not in this branch and was never launched. Both earlier public-feed accounts remain halted and their workers are stopped.
 
+**Current user choice: free recorded replay.** Run `bun run paper:free-replay` using [the free replay guide](FREE_REPLAY.md). It requires no provider account, key or Jev spend. The provider and integration discussion below is retained for a possible future live-feed request; no provider decision is needed for the selected offline workflow.
+
 ## What works now
 
 The managed runner supports offline fixtures and the fixed public read-only source with `mock` decisions. Its start/status/stop commands, durable ledger, checksums, source identity, PID validation, finite runtime and request budget are tested. It has no HTTP listener or wallet. Starting an already halted account exits before any network request. The public source previously failed on rate/freshness limits; do not keep restarting it.
@@ -68,4 +70,4 @@ Actual tokens include the submitted state/questions as billed by the provider an
 4. Use read-only RPC methods only (`eth_chainId`, `eth_blockNumber`, `eth_getBlockByNumber`, `eth_call`, `eth_getLogs`; subscriptions only if a tested adapter needs them). Select provider method/IP restrictions if available; do not assume such scopes exist. No wallet, signer, send-transaction, funds, administrative key or billing-management permission is needed. Jev needs evaluation access only if the provider offers that separation.
 5. Finish the selected-provider transport and budgeted Jev adapter using mocks first; run a separately authorized bounded feed acceptance test, then a capped Jev latency test, then the paper session. Retain the old halted accounts and choose a separately identified diagnostic account only by an explicit recovery decision. Report both accepted and rejected/stale decisions, full costs and all stops.
 
-No strategy change, real trading, merge, deployment, public exposure, schedule, purchase or credential setup is authorized by this document. PR #2 stays draft. The remaining user decision is provider access/budget; the remaining engineering acceptance is measured latency plus guarded Jev integration, not merely possession of a key.
+No strategy change, real trading, merge, deployment, public exposure, schedule, purchase or credential setup is authorized by this document. PR #2 stays draft. A future live Jev setup would still need provider access/budget, measured latency and guarded Jev integration. The selected free offline workflow does not depend on those choices.

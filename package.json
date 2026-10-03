@@ -26,6 +26,8 @@
     "paper:start": "bun --no-env-file scripts/paper-control.ts start",
     "paper:status": "bun --no-env-file scripts/paper-control.ts status",
     "paper:stop": "bun --no-env-file scripts/paper-control.ts stop",
-    "paper:doctor": "bun --no-env-file scripts/paper-doctor.ts"
+    "paper:doctor": "bun --no-env-file scripts/paper-doctor.ts",
+    "paper:collect": "bun --no-env-file scripts/paper-collect.ts",
+    "paper:free-replay": "bun --no-env-file scripts/paper-free-replay.ts"
   }
 }

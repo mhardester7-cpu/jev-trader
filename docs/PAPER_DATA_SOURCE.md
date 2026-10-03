@@ -2,6 +2,8 @@
 
 A bounded read-only check retrieved Kuru MON-USDC blocks 105488246–105488269 from Goldsky's public Monad RPC on 2026-10-03. The sample covers only 2026-09-17 02:38:53–02:39:00 UTC: 24 consecutive blocks and 15 trade events. It is an ingestion fixture, not a profitability sample.
 
+A later separately authorized free historical collection extended that same range to 600 complete blocks, without live operation or a strategy change. See [the recorded replay, actual results and limitations](FREE_REPLAY.md). The original small fixture below remains unchanged for ingestion regression tests.
+
 [Monad's endpoint directory](https://docs.monad.xyz/developer-essentials/network-information) lists the public RPC providers and limits. [Historical-data documentation](https://docs.monad.xyz/developer-essentials/historical-data) explains state-retention limitations. The default QuickNode endpoint served recent books but rejected this older historical state as not retained; Goldsky `https://rpc2.monad.xyz` served the tested range. This proves availability only for this tiny range, not unrestricted archival coverage. [Kuru's integration documentation](https://docs.kuru.io/contracts/Integration) describes orderbook events.
 
 The committed fixture and provenance record are `tests/fixtures/mon-usdc-24-blocks.jsonl` and `mon-usdc-24-blocks.provenance.json`. Retrieval made 75 method calls for block headers, book/vault snapshots, ordered trade logs, and first/last market parameters; discovery and a representative transaction receipt were separate small read-only checks. No key, model inference, paid data or order submission was used. Normalized frame SHA-256 is `2ad8244a1b73fad286d1e451947ecd7c762f57a47fed5f6fb8398e7da1aff583`.

@@ -2,7 +2,7 @@
 
 MON-USDC on Kuru/Monad, with a TypeSafe AI Jev adapter and an offline mock heuristic. This branch disables real wallets, signing, deposits, approvals, and order submission. `PRIVATE_KEY` is ignored; `DRY_RUN=false` fails at startup. No environment setting enables live trading.
 
-The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). A seven-second authentic ingestion fixture is included; it is too short for strategy evaluation. No Jev evaluation has been performed. Synthetic checks are software tests, not evidence of investment performance.
+The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). The selected free workflow replays a saved authentic historical sample with the original fast mock policy. No Jev evaluation has been performed. Short historical replays and synthetic checks do not establish investment performance.
 
 ## Offline quick start
 
@@ -12,10 +12,13 @@ Use Bun 1.4.2 and the committed lockfile. Installation downloads dependencies; t
 bun install --frozen-lockfile --ignore-scripts
 bun test
 bun run typecheck
+bun run paper:free-replay
 bun run paper:demo
 ```
 
-`paper:demo` prints the unchanged mock heuristic's results on a fixed synthetic fixture. Base and higher-cost assumptions are included. The [committed report](docs/paper-evaluation.synthetic.json) is reproducible.
+`paper:free-replay` verifies the bundled raw RPC cache and recording hashes, then prints base/stress results with cash and buy-and-hold comparisons. It needs no account, key, network or inference spend. See [the free replay guide](docs/FREE_REPLAY.md), [recording](research/mon-usdc-20260917) and [committed historical report](docs/paper-evaluation.recorded.json). It does not run a live bot or test Jev. The original policy is unchanged.
+
+`paper:demo` prints the unchanged mock heuristic's results on a fixed synthetic fixture. Base and higher-cost assumptions are included. The [committed synthetic report](docs/paper-evaluation.synthetic.json) is reproducible.
 
 Replay a locally supplied recording:
 
@@ -58,11 +61,11 @@ Fees, participation and slippage are estimates, not verified current market para
 
 ## Original fast-mode setup
 
-See [the setup guide](docs/FAST_SETUP.md) for verified provider capacity/cost options, secure credential prerequisites, and the remaining latency and Jev integration gates. `bun run paper:doctor` is an offline readiness check. The original per-block strategy is selected; the paused slower prototype is not in this branch.
+The current choice is [free recorded replay](docs/FREE_REPLAY.md), which preserves the original per-block strategy. The paused slower prototype is not in this branch. [The fast setup guide](docs/FAST_SETUP.md) documents future provider capacity, latency and Jev requirements if live data is requested later; those are not prerequisites for offline replay. `bun run paper:doctor` is an offline readiness check.
 
 ## Bounded local paper run
 
-Use the [local operating guide](docs/PAPER_OPERATIONS.md) for start, status, stop, recovery, and limits. No API key is needed. The managed runner has no web server and never calls Jev.
+Use the [local operating guide](docs/PAPER_OPERATIONS.md) for start, status, stop, recovery, and limits. This optional live-feed mode is separate from the selected offline workflow. Earlier public runs halted on gaps/throttling; their accounts remain halted. Do not repeatedly restart them. The managed runner has no web server and never calls Jev.
 
 ```sh
 bun run paper:start --source public --seconds 900
@@ -86,6 +89,8 @@ The Jev adapter uses `TYPESAFE_AI_API_KEY` (AI SDK naming) and defaults to pinne
 | --- | --- |
 | `src/paper.ts` | Deterministic fills, spot ledger, costs, UTC sessions and risk controls; no I/O |
 | `src/replay.ts` | Frozen mock strategy, chronological evaluation and benchmarks |
+| `src/historical.ts`, `scripts/paper-collect.ts` | Bounded historical public reads, cache integrity and complete-window decoding |
+| `src/recording-report.ts`, `scripts/paper-free-replay.ts` | Verified offline historical report and fixed cost stress case |
 | `src/state.ts` | Shared causal market features |
 | `src/trader.ts` | Sequential paper loop, freshness gates, session recordings |
 | `src/model.ts` | Jev adapter and unchanged mock signal |

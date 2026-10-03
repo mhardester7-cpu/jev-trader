@@ -79,7 +79,7 @@ export function evaluate(frames: readonly PaperFrame[], options: PaperOptions = 
   };
 }
 
-function validateChronology(frames: readonly PaperFrame[]) {
+export function validateChronology(frames: readonly PaperFrame[]) {
   frames.forEach((frame, i) => {
     validateFrame(frame);
     if (i && frame.book.block !== frames[i - 1]!.book.block + 1) throw new Error("Replay data must have consecutive, unique blocks");

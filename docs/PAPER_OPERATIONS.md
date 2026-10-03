@@ -2,6 +2,8 @@
 
 These commands run an offline fixture or a bounded read-only public-data session on the connected Mac. All fills are simulated; model is always `mock`, paid inference is $0, and there is no wallet or order-submission path. The worker ignores `.env`, receives a minimal environment, and exposes no HTTP listener. It never uses the existing Railway dashboard.
 
+The selected free workflow is now [recorded replay](FREE_REPLAY.md): `bun run paper:free-replay`. That command needs no running worker or network. The controls below remain available for separately requested operations; the two earlier public diagnostic accounts remain halted.
+
 ```sh
 bun run paper:start --source public --seconds 900
 bun run paper:status --source public
@@ -59,6 +61,6 @@ The free endpoint's observed limits and latency do not support a claim of sustai
 
 ## Verification
 
-The final offline suite passes 50 tests with 701 assertions, including authentic timestamp/order validation, complete two-block batches, deterministic prefix invariance, ledger persistence/corruption rejection, and owned-process start/status/stop. TypeScript, offline ABI encoding and `git diff --check` pass. The original synthetic report is byte-identical. Tests make no external HTTP calls; the two explicitly authorized operations diagnostics above are separate from the offline suite.
+At the local-controls checkpoint, the offline suite passed 50 tests with 701 assertions, including authentic timestamp/order validation, complete two-block batches, deterministic prefix invariance, ledger persistence/corruption rejection, and owned-process start/status/stop. Later coverage adds readiness, historical collection and verified offline replay; see [the current replay guide](FREE_REPLAY.md). TypeScript, offline ABI encoding and `git diff --check` passed. The original synthetic report is byte-identical. Tests make no external HTTP calls; the two explicitly authorized operations diagnostics above are separate from the offline suite.
 
-For the original fast-mode provider and Jev setup decisions, use [FAST_SETUP.md](FAST_SETUP.md) and `bun run paper:doctor`. No further public diagnostics were run after the two receipts above.
+For a possible future fast-mode provider and Jev setup, use [FAST_SETUP.md](FAST_SETUP.md) and `bun run paper:doctor`. No further live public diagnostics were run after the two receipts above. A separate slow, bounded historical collection supports the free replay; it does not run the live worker or change the strategy cadence.

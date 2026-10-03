@@ -73,7 +73,8 @@ export class PublicPaperSource {
       { method: "eth_getLogs", params: [{ address: PAPER_MARKET, topics: [TRADE_TOPIC], fromBlock: tag, toBlock: tag }] },
     ];
   }
-  private decodeFrame(block: number, raw: any[]): ChainFrame {
+  /** Decode a recorded RPC tuple offline with the same validation used by the live reader. */
+  decodeFrame(block: number, raw: any[]): ChainFrame {
     const [header, l2, vault, rawParams, logs] = raw;
     const p = this.iface.decodeFunctionResult("getMarketParams", rawParams);
     if (String(p[0]) !== "100000000" || String(p[1]) !== "10000000000" || String(p[6]) !== "100" || String(p[7]) !== "2000000000000" || String(p[2]).toLowerCase() !== ethers.constants.AddressZero || String(p[4]).toLowerCase() !== "0x754704bc059f8c67012fed69bc8a327a5aafb603") throw new Error("Market parameters changed; review paper sizing/price assumptions");
