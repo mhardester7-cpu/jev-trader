@@ -16,6 +16,8 @@ export function quotePrice(side: Side, book: Book) {
 
 export function replay(frames: readonly PaperFrame[], options: PaperOptions = REPLAY_OPTIONS, start = 0, end = frames.length) {
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || start >= end || end > frames.length) throw new Error("Invalid replay interval");
+  // Validate warmup too: a malformed historical prefix must not leak future state into features.
+  validateChronology(frames.slice(Math.max(0, start - 400), end));
   const paper = new PaperExecution(options);
   const history: PaperFrame[] = frames.slice(Math.max(0, start - 400), start);
   const equity: { block: number; pnlUsd: number; netLiquidationPnlUsd: number }[] = [];
@@ -60,11 +62,7 @@ function buyHold(first: Book, last: Book, o: PaperOptions) {
 /** Expanding historical context, disjoint forward scoring windows; fixed policy, no fitting. */
 export function evaluate(frames: readonly PaperFrame[], options: PaperOptions = REPLAY_OPTIONS, warmup = 150, window = 150) {
   if (!Number.isInteger(warmup) || warmup < REPLAY_POLICY.horizonBlocks || !Number.isInteger(window) || window < 2 || frames.length < warmup + window) throw new Error("Need a full warmup and forward window");
-  frames.forEach((frame, i) => {
-    validateFrame(frame);
-    if (i && frame.book.block !== frames[i - 1]!.book.block + 1) throw new Error("Replay data must have consecutive, unique blocks");
-    if (i && frame.timestampMs <= frames[i - 1]!.timestampMs) throw new Error("Replay timestamps must increase strictly");
-  });
+  validateChronology(frames);
   const folds = [];
   for (let start = warmup; start + window <= frames.length; start += window) {
     const { equity, orders, ...metrics } = replay(frames, options, start, start + window);
@@ -79,4 +77,12 @@ export function evaluate(frames: readonly PaperFrame[], options: PaperOptions = 
     method: "Fixed policy, chronological forward windows; fresh cash per fold, past-only feature warmup. No parameter selection. Not a fitted walk-forward strategy.",
     folds,
   };
+}
+
+export function validateChronology(frames: readonly PaperFrame[]) {
+  frames.forEach((frame, i) => {
+    validateFrame(frame);
+    if (i && frame.book.block !== frames[i - 1]!.book.block + 1) throw new Error("Replay data must have consecutive, unique blocks");
+    if (i && frame.timestampMs < frames[i - 1]!.timestampMs) throw new Error("Replay timestamps must not decrease");
+  });
 }

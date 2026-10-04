@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "source": "https://rpc2.monad.xyz",
+  "chainId": 143,
+  "market": "0x065C9d28E428A0db40191a54d33d5b7c71a9C394",
+  "startBlock": 105488246,
+  "endBlock": 105488269,
+  "frames": 24,
+  "trades": 15,
+  "firstUtc": "2026-09-17T02:38:53.000Z",
+  "lastUtc": "2026-09-17T02:39:00.000Z",
+  "uniqueSecondTimestamps": 8,
+  "adjacentEqualTimestamps": 16,
+  "minBookMid": 0.0226295,
+  "maxBookMid": 0.022637499999999998,
+  "activeVaultBlocks": 0,
+  "marketParams": {
+    "pricePrecision": "100000000",
+    "sizePrecision": "10000000000",
+    "baseAssetAddress": "0x0000000000000000000000000000000000000000",
+    "baseAssetDecimals": "18",
+    "quoteAssetAddress": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+    "quoteAssetDecimals": "6",
+    "tickSize": "100",
+    "minSize": "2000000000000",
+    "maxSize": "2000000000000000000",
+    "takerFeeBps": "0",
+    "makerFeeBps": "0"
+  },
+  "marketParamsUnchangedAcrossSample": true,
+  "baseFeeWeiValues": [
+    "100000000000"
+  ],
+  "individualFrameValidation": "passed",
+  "chainHashContinuity": "passed",
+  "bookHeaderBlockAgreement": "passed",
+  "tradeBlockHashAgreement": "passed",
+  "normalizedFramesSha256": "2ad8244a1b73fad286d1e451947ecd7c762f57a47fed5f6fb8398e7da1aff583",
+  "note": "Authentic historical source sample only; no performance evaluation, no timestamp interpolation. EVM seconds resolution must be supported by replay before use. Fee parameters are raw values decoded using the repository's pinned ABI.",
+  "purpose": "Authentic ingestion regression only; seven seconds is not performance evidence.",
+  "retrieval": {
+    "endpoint": "https://rpc2.monad.xyz",
+    "chainId": 143,
+    "market": "0x065C9d28E428A0db40191a54d33d5b7c71a9C394",
+    "startBlock": 105488246,
+    "endBlock": 105488269,
+    "retrievedAt": "2026-10-03T16:43:36.417885+00:00",
+    "queries": 75,
+    "credentials": false,
+    "methodAllowlist": [
+      "eth_getBlockByNumber",
+      "eth_call (getL2Book/getVaultParams/getMarketParams only)",
+      "eth_getLogs"
+    ]
+  },
+  "officialSourceDocumentation": [
+    "https://docs.monad.xyz/developer-essentials/network-information",
+    "https://docs.monad.xyz/developer-essentials/historical-data",
+    "https://docs.kuru.io/contracts/Integration"
+  ]
+}

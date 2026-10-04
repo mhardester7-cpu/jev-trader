@@ -21,6 +21,7 @@ export interface PaperOrder { id: number; block: number; side: Side; price: numb
 export interface PaperFrame { timestampMs: number; book: Book; prints: TradePrint[] }
 export type ExitReason = "stop_loss" | "take_profit" | "daily_loss" | "session_close" | "session_rollover" | "data_gap";
 export type PaperFill = Fill & { reason?: ExitReason };
+export interface PaperCheckpoint { version: 1; options: PaperOptions; state: Record<string, unknown> }
 const EPS = 1e-9;
 const finite = (x: number, name: string, min = 0) => {
   if (!Number.isFinite(x) || x < min) throw new Error(`Invalid ${name}`);
@@ -67,7 +68,8 @@ export class PaperExecution {
   advance({ timestampMs, book, prints }: PaperFrame): PaperFill[] {
     validateFrame({ timestampMs, book, prints });
     if (book.block <= this.block) throw new Error("Blocks must increase strictly");
-    if (this.timestampMs && timestampMs <= this.timestampMs) throw new Error("Timestamps must increase strictly");
+    // EVM headers expose whole seconds; distinct increasing blocks may share a timestamp.
+    if (this.timestampMs && timestampMs < this.timestampMs) throw new Error("Timestamps must not decrease");
     const day = new Date(timestampMs).toISOString().slice(0, 10);
     const rollover = this.day !== "" && this.day !== day;
     const gap = this.block > 0 && (book.block !== this.block + 1 || timestampMs - this.timestampMs > 1000);
@@ -198,6 +200,43 @@ export class PaperExecution {
   }
 
   halt() { this.halted = true; this.order = null; }
+  cancelOrders() { this.order = null; }
+  get lastBlock() { return this.block; }
+
+  checkpoint(): PaperCheckpoint {
+    const { options, ...state } = this;
+    return structuredClone({ version: 1, options, state });
+  }
+
+  /** Reject corrupt/incompatible state instead of silently resetting balances or loss limits. */
+  static restore(value: PaperCheckpoint): PaperExecution {
+    if (!value || value.version !== 1 || !value.state || typeof value.state !== "object") throw new Error("Invalid paper checkpoint");
+    const paper = new PaperExecution(value.options);
+    const expected = paper.checkpoint().state;
+    if (JSON.stringify(Object.keys(expected).sort()) !== JSON.stringify(Object.keys(value.state).sort())) throw new Error("Incompatible paper checkpoint fields");
+    for (const [key, baseline] of Object.entries(expected)) {
+      const item = value.state[key];
+      if (baseline === null) continue; // order and exit reason checked below
+      if (typeof item !== typeof baseline || typeof item === "number" && !Number.isFinite(item)) throw new Error(`Invalid checkpoint ${key}`);
+    }
+    const s = value.state;
+    for (const key of ["mon", "costBasisUsd", "feesUsd", "gasUsd", "gasMon", "inferenceUsd", "turnoverUsd", "maxDrawdownPct"] as const) finite(s[key] as number, key);
+    for (const key of ["block", "timestampMs", "fills", "quotes", "overnightBreaches"] as const) if (!Number.isSafeInteger(s[key]) || (s[key] as number) < 0) throw new Error(`Invalid checkpoint ${key}`);
+    if (!Number.isSafeInteger(s.nextId) || (s.nextId as number) >= 0 || (s.peakUsd as number) <= 0 || (s.dailyStartUsd as number) <= 0) throw new Error("Invalid checkpoint risk state");
+    if (s.day !== ((s.timestampMs as number) ? new Date(s.timestampMs as number).toISOString().slice(0, 10) : "")) throw new Error("Invalid checkpoint session");
+    if (s.lastExitReason !== null && !["stop_loss", "take_profit", "daily_loss", "session_close", "session_rollover", "data_gap"].includes(s.lastExitReason as string)) throw new Error("Invalid checkpoint exit reason");
+    if (s.order !== null) {
+      const o = s.order as PaperOrder;
+      if (!o || !["buy", "sell"].includes(o.side) || o.block !== s.block || !Number.isSafeInteger(o.id) || o.id >= 0) throw new Error("Invalid checkpoint order");
+      finite(o.price, "order price", Number.MIN_VALUE); finite(o.size, "order size", Number.MIN_VALUE);
+      if (s.halted || s.dailyPaused || (o.side === "sell" && o.size > (s.mon as number) + EPS)) throw new Error("Invalid checkpoint order exposure");
+    }
+    const cash = value.options.bankrollUsd + (s.realizedUsd as number) - (s.costBasisUsd as number) - (s.feesUsd as number) - (s.gasUsd as number) - (s.inferenceUsd as number);
+    if (Math.abs(cash - (s.cashUsd as number)) > 1e-7 || (s.mon === 0 && Math.abs(s.costBasisUsd as number) > EPS) || (s.mon as number) > value.options.maxPositionMon + EPS) throw new Error("Checkpoint ledger does not reconcile");
+    Object.assign(paper, structuredClone(s));
+    return paper;
+  }
+
   private mark(book: Book) {
     const equity = this.snapshot(book).liquidationUsd;
     this.peakUsd = Math.max(this.peakUsd, equity);

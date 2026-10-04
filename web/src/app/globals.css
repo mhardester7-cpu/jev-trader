@@ -42,9 +42,9 @@
   --pnl-pos: #0E9F5D;
   --pnl-neg: #DE3B32;
 
-  /* fonts (set by next/font in layout.tsx) */
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Local system fonts keep the dashboard independent of remote font downloads. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* page */
   --page-bg: #F0EEE9;
@@ -130,14 +130,15 @@ svg {
 }
 
 @media (min-width: 900px) {
-  /* the card already fills the viewport; never let the document scroll */
+  /* Session controls can exceed the viewport; retain normal document scrolling. */
   body {
-    overflow: hidden;
+    overflow: auto;
   }
 
   .card {
     /* 16px margin top + 16px bottom; border-box keeps the 1px borders inside */
-    height: calc(100vh - 32px);
+    min-height: calc(100vh - 32px);
+    height: auto;
   }
 }
 

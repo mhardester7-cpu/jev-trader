@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "purpose": "Bounded public-feed operations smoke test, not strategy performance evidence",
+  "endpoint": "https://rpc2.monad.xyz",
+  "model": "mock",
+  "startedAtUtc": "2026-10-03T17:09:19.645000+00:00",
+  "endedAtUtc": "2026-10-03T17:09:31.131000+00:00",
+  "elapsedSeconds": 11.486,
+  "phase": "halted",
+  "processConfirmedStopped": true,
+  "readQueries": 183,
+  "frames": 26,
+  "firstBlock": 110236059,
+  "lastBlock": 110236109,
+  "entryEligibleFrames": 0,
+  "gaps": [
+    {
+      "fromBlock": 110236083,
+      "toBlock": 110236109,
+      "timestampDeltaMs": 8000
+    }
+  ],
+  "journalSha256": "00aaf9f7352c47ef5e6d0eca2da1e57c1dc404622308f09c445a455054fc6cd4",
+  "totals": {
+    "cashUsd": 100,
+    "mon": 0,
+    "equityUsd": 100,
+    "liquidationUsd": 100,
+    "unrealizedUsd": 0,
+    "pnlUsd": 0,
+    "netLiquidationPnlUsd": 0,
+    "realizedUsd": 0,
+    "feesUsd": 0,
+    "gasUsd": 0,
+    "gasMon": 0,
+    "inferenceUsd": 0,
+    "turnoverUsd": 0,
+    "fills": 0,
+    "quotes": 0,
+    "maxDrawdownPct": 0,
+    "halted": true,
+    "dailyPaused": false,
+    "sessionUtc": "2026-10-03",
+    "dailyPnlUsd": 0,
+    "overnightBreaches": 0,
+    "lastExitReason": null
+  },
+  "paidInferenceUsd": 0,
+  "limitation": "Public RPC collection fell behind before 100-frame warmup; larger-than-20-block catch-up gap halted. No quotes/fills, no inference or real orders. Halted account preserved; no restart."
+}

@@ -10,14 +10,15 @@ const ROW_H = 26;
 /** Hard ceiling, so a very tall viewport does not render an absurd list. */
 const MAX_ROWS = 40;
 
-type Kind = "buy" | "sell" | "late";
+type Kind = "buy" | "sell" | "late" | "skip";
 
 function kindOf(event: BlockEvent): Kind {
   const d = event.decision;
-  if (!d || d.late) return "late";
+  if (!d) return "skip";
+  if (d.late) return "late";
   if (d.action === "buy") return "buy";
   if (d.action === "sell") return "sell";
-  return "late";
+  return "skip";
 }
 
 function fmtSize(size: number): string {
@@ -28,9 +29,10 @@ const KIND_CLASS: Record<Kind, string> = {
   buy: styles.kindBuy,
   sell: styles.kindSell,
   late: styles.kindLate,
+  skip: styles.kindSkip,
 };
 
-const WORD: Record<Kind, string> = { buy: "BUY", sell: "SELL", late: "LATE" };
+const WORD: Record<Kind, string> = { buy: "BUY", sell: "SELL", late: "LATE", skip: "NO CALL" };
 
 /**
  * One row per block. The word is the side the model picked, the detail is the order that went on
@@ -67,14 +69,14 @@ export default function Feed({ events }: { events: BlockEvent[] }) {
       <div className={styles.label}>FEED</div>
       <div className={styles.list} ref={listRef}>
         {rows.length === 0 ? (
-          <div className={styles.empty}>no blocks yet</div>
+          <div className={styles.empty}>Jev decisions will appear here.</div>
         ) : (
           rows.map((event, i) => {
             const kind = kindOf(event);
             const decision = event.decision;
             const quote = event.quote;
             const fill = event.fill;
-            const decided = kind !== "late";
+            const decided = kind === "buy" || kind === "sell";
             const kindClass = KIND_CLASS[kind];
 
             const conf =

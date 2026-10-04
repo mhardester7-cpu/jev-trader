@@ -21,6 +21,7 @@ interface State extends FeedState {
 
 type Action =
   | { type: "snapshot"; meta: Meta | null; history: BlockEvent[] }
+  | { type: "meta"; meta: Meta | null }
   | { type: "block"; event: BlockEvent }
   | { type: "fill"; block: number; fill: Fill }
   | { type: "quote"; block: number; quote: Quote }
@@ -54,6 +55,7 @@ function avg(latSum: number, latCount: number): number {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case "meta": return { ...state, meta: action.meta ?? state.meta };
     case "connection":
       return state.connection === action.connection ? state : { ...state, connection: action.connection };
 
@@ -182,7 +184,14 @@ function parseMeta(raw: Record<string, unknown> | null): Meta | null {
     wallet: typeof raw.wallet === "string" ? raw.wallet : null,
     dryRun: Boolean(raw.dryRun),
     market: typeof raw.market === "string" ? raw.market : "MON/USDC",
-    startedAt: typeof raw.startedAt === "number" ? raw.startedAt : Date.now(),
+    startedAt: typeof raw.startedAt === "number" ? raw.startedAt : null,
+    endedAt: typeof raw.endedAt === "number" ? raw.endedAt : null,
+    mode: typeof raw.mode === "string" ? raw.mode : undefined,
+    phase: typeof raw.phase === "string" ? raw.phase : undefined,
+    reason: typeof raw.reason === "string" ? raw.reason : null,
+    runId: typeof raw.runId === "string" ? raw.runId : null,
+    controlToken: typeof raw.controlToken === "string" ? raw.controlToken : undefined,
+    budget: raw.budget as Meta["budget"], source: raw.source as Meta["source"],
   };
 }
 
@@ -271,6 +280,11 @@ export function useFeed(apiUrl: string): FeedState {
       });
       handle("block", (data) => {
         dispatch({ type: "block", event: data as BlockEvent });
+      });
+      handle("status", (data) => {
+        const d = (data ?? {}) as Record<string, unknown>;
+        dispatch({ type: "meta", meta: parseMeta(d) });
+        if (d.latest) dispatch({ type: "block", event: d.latest as BlockEvent });
       });
       handle("fill", (data) => {
         const d = (data ?? {}) as { block?: number; fill?: Fill };

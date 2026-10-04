@@ -39,7 +39,7 @@ export interface Model {
   decide(state: TradeState): Promise<Decision>;
 }
 
-const QUESTIONS = {
+export const QUESTIONS = {
   direction: {
     type: "choice",
     instructions: {

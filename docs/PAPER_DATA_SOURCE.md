@@ -1,0 +1,17 @@
+# Authentic data source check
+
+A bounded read-only check retrieved Kuru MON-USDC blocks 105488246–105488269 from Goldsky's public Monad RPC on 2026-10-03. The sample covers only 2026-09-17 02:38:53–02:39:00 UTC: 24 consecutive blocks and 15 trade events. It is an ingestion fixture, not a profitability sample.
+
+A later separately authorized free historical collection extended that same range to 600 complete blocks, without live operation or a strategy change. See [the recorded replay, actual results and limitations](FREE_REPLAY.md). The original small fixture below remains unchanged for ingestion regression tests.
+
+[Monad's endpoint directory](https://docs.monad.xyz/developer-essentials/network-information) lists the public RPC providers and limits. [Historical-data documentation](https://docs.monad.xyz/developer-essentials/historical-data) explains state-retention limitations. The default QuickNode endpoint served recent books but rejected this older historical state as not retained; Goldsky `https://rpc2.monad.xyz` served the tested range. This proves availability only for this tiny range, not unrestricted archival coverage. [Kuru's integration documentation](https://docs.kuru.io/contracts/Integration) describes orderbook events.
+
+The committed fixture and provenance record are `tests/fixtures/mon-usdc-24-blocks.jsonl` and `mon-usdc-24-blocks.provenance.json`. Retrieval made 75 method calls for block headers, book/vault snapshots, ordered trade logs, and first/last market parameters; discovery and a representative transaction receipt were separate small read-only checks. No key, model inference, paid data or order submission was used. Normalized frame SHA-256 is `2ad8244a1b73fad286d1e451947ecd7c762f57a47fed5f6fb8398e7da1aff583`.
+
+Checks passed for consecutive parent hashes, book/header block agreement, event block hashes, and individual frame validity. The sample has eight unique second timestamps and sixteen adjacent pairs with equal timestamps. This exposed the original replay's incorrect strict timestamp increase requirement. Replay now permits nondecreasing timestamps while requiring unique consecutive blocks; backwards time, duplicate/reversed blocks, future prints and malformed warmup data still reject. Prefix-invariance tests confirm that future changes cannot alter earlier decisions.
+
+Historical parameters were: price precision 1e8, size precision 1e10, tick 0.000001 USDC, minimum 200 MON, native MON base, USDC quote `0x754704Bc059F8C67012fEd69BC8A327a5aafb603`, and 0 bps maker/taker fees. Parameters matched at both ends. The vault was inactive throughout. These observations do not prove current fees or future liquidity. The runner rechecks parameters and refuses fees above its conservative 2/5 bps assumptions.
+
+Base fee was 100 gwei in all sample blocks. One observed taker transaction, `0xcf0ca82602813c230b429229abbae310bf66e29cece3e7336975171e3e47081f`, had gas limit/used 917,284 and effective price 102,000,000,001 wei, costing 0.09356296800091728 MON. This is not representative calibration for the bot's quote or cancellation transaction. The existing 0.0357 MON quote/exit assumption remains explicitly uncertain.
+
+Next research steps are longer bounded recordings across independent complete sessions, gap/reorg accounting, actual quote/cancel gas and fill-model calibration, followed by frozen-policy forward evaluation against cash and allocation-matched buy-and-hold. The authorized short public mock run is an operations/data check. It cannot establish a profitable day-trading system.

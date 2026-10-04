@@ -176,7 +176,7 @@ export default function FlowChart({
       price: fmtPrice(e.mid),
       trade: side ? `FILL ${side} ${fmtMon(e.fill!.size, 0)}` : quoteText,
       tint: e.fill ? (e.fill.side === "buy" ? "var(--buy-ink)" : "var(--sell-ink)") : q ? (q.side === "buy" ? "var(--buy-ink)" : "var(--sell-ink)") : "var(--muted)",
-      lat: e.decision && !e.decision.late ? `${Math.round(e.decision.latencyMs)} ms` : "late",
+      lat: e.decision && !e.decision.late ? `${Math.round(e.decision.latencyMs)} ms` : e.decision?.late ? "late" : "no call",
     };
   }, [model, hover, w]);
 
@@ -185,7 +185,7 @@ export default function FlowChart({
   const late = d?.late === true;
   const act = late ? "late" : (d?.action ?? "hold");
   const word =
-    act === "buy" ? "Buying" : act === "sell" ? "Selling" : act === "late" ? "Missed the block" : "Holding";
+    act === "buy" ? "Jev chose buy" : act === "sell" ? "Jev chose sell" : act === "late" ? "Missed the block" : "No call";
   const wordColor =
     act === "buy"
       ? "var(--buy-ink)"
@@ -219,7 +219,7 @@ export default function FlowChart({
         onPointerLeave={() => setHover(null)}
       >
         {!model || !shown ? (
-          <div className={styles.empty}>waiting for blocks…</div>
+          <div className={styles.empty}>Price chart appears when a Jev test starts.</div>
         ) : (
           <>
             <svg className={styles.svg} viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true">
@@ -335,7 +335,7 @@ export default function FlowChart({
                 <span>Kuru</span>
                 <span>{stance}</span>
                 <span style={{ color: pnlMon >= 0 ? "var(--pnl-pos)" : "var(--pnl-neg)" }}>
-                  p&amp;l {fmtSignedMon(pnlMon, 3)} ({fmtSigned(pnlPct, 2)}%)
+                  mark p&amp;l {fmtSignedMon(pnlMon, 3)} ({fmtSigned(pnlPct, 2)}%)
                 </span>
               </div>
             </div>
@@ -349,7 +349,7 @@ export default function FlowChart({
                 {word}
               </div>
               <div className={styles.sub}>
-                <span>{!d || late ? "late" : `${Math.round(d.latencyMs)} ms`}</span>
+                <span>{late ? "late" : !d ? "no call" : `${Math.round(d.latencyMs)} ms`}</span>
                 <span>conf {fmtConf(conf)}</span>
               </div>
             </div>

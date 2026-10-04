@@ -145,6 +145,7 @@
   color: var(--sell);
 }
 
+.kindSkip .word { color: var(--muted); }
 .kindLate .word,
 .kindLate .detail {
   color: var(--late);

@@ -61,10 +61,10 @@ export default function Header({ meta, latest, connection }: HeaderProps) {
         className={styles.wallet}
         onClick={onCopy}
         disabled={!wallet}
-        title={wallet ?? "no wallet, dry run"}
-        aria-label={wallet ? `Copy wallet address ${wallet}` : "Dry run"}
+        title={wallet ?? "No wallet; all orders are simulated"}
+        aria-label={wallet ? `Copy wallet address ${wallet}` : "Paper only"}
       >
-        {copied ? "copied" : wallet ? shortAddr(wallet) : "dry run"}
+        {copied ? "copied" : wallet ? shortAddr(wallet) : "paper only"}
       </button>
 
       {model ? (
