@@ -1,5 +1,7 @@
 # Original fast paper mode: setup and remaining gates
 
+For the newer **real Jev on recorded data** path and local dashboard, see [JEV_DASHBOARD.md](JEV_DASHBOARD.md). It avoids a live RPC dependency, requires private key entry plus a run budget, and has not yet made a real model call. The live-feed discussion below remains a separate future setup.
+
 Checked 2026-10-03. The selected strategy is the original per-block MON-USDC market-making policy, with paper-only execution, funded spot accounting, fees/gas, causal fills, persistence and intraday risk controls. The paused five-second alternative is not in this branch and was never launched. Both earlier public-feed accounts remain halted and their workers are stopped.
 
 **Current user choice: free recorded replay.** Run `bun run paper:free-replay` using [the free replay guide](FREE_REPLAY.md). It requires no provider account, key or Jev spend. The provider and integration discussion below is retained for a possible future live-feed request; no provider decision is needed for the selected offline workflow.

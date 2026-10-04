@@ -1,13 +1,12 @@
 /* Page shell. Component-level styling lives with each component; this file only
    owns the two-column main row.
 
-   Desktop (>= 900px): the card is a fixed-height flex column (see globals.css)
-   and this row is its only flexible child, so nothing can push the page past
-   the viewport. Below 900px everything falls back to normal document flow. */
+   Desktop keeps room for the chart beneath the session controls. The page can
+   scroll; below 900px the chart and decision feed stack vertically. */
 
 .main {
   flex: 1;
-  min-height: 0;
+  min-height: 440px;
   display: flex;
   gap: 16px;
   padding: 0 24px;
@@ -42,6 +41,7 @@
   border: 1px solid var(--border);
   border-radius: 20px;
   overflow: hidden;
+  max-height: 500px;
 }
 
 /* the decision panel keeps its natural height ... */

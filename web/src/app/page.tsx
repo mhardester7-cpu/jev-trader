@@ -5,10 +5,11 @@ import Feed from "@/components/Feed/Feed";
 import FlowChart from "@/components/FlowChart/FlowChart";
 import Header from "@/components/Header/Header";
 import StatsRow from "@/components/StatsRow/StatsRow";
+import PaperControls from "@/components/PaperControls/PaperControls";
 import { useFeed } from "@/lib/useFeed";
 import styles from "./page.module.css";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://jev-trader-production.up.railway.app";
+const API_URL = "/api/paper";
 
 export default function Page() {
   const feed = useFeed(API_URL);
@@ -17,6 +18,7 @@ export default function Page() {
     <div className="card">
       <Header meta={feed.meta} latest={feed.latest} connection={feed.connection} />
       <StatsRow latest={feed.latest} avgLatencyMs={feed.avgLatencyMs} meta={feed.meta} />
+      <PaperControls meta={feed.meta} latest={feed.latest} connection={feed.connection} />
       <div className={styles.main}>
         <div className={styles.left}>
           <div className={styles.chartWrap}>

@@ -25,11 +25,11 @@ export default function StatsRow({
       setUp(null);
       return;
     }
-    const tick = () => setUp(uptime(startedAt));
+    const tick = () => setUp(uptime(startedAt, meta?.endedAt ?? Date.now()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, meta?.endedAt]);
 
   const decision = latest?.decision ?? null;
   const last = decision && !decision.late ? `${decision.latencyMs} ms` : `${DASH} ms`;
@@ -44,7 +44,7 @@ export default function StatsRow({
       <span className={styles.nowrap}>{totals ? fmtInt(totals.decisions) : DASH} calls</span>
       <span className={styles.nowrap}>{totals ? fmtInt(totals.fills) : DASH} fills</span>
       <span className={styles.spacer} />
-      <span>uptime {up ?? "00:00:00"}</span>
+      <span>run time {up ?? "00:00:00"}</span>
     </div>
   );
 }

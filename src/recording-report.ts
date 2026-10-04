@@ -13,7 +13,7 @@ export interface RecordingManifest {
 export const RECORDING_PROTOCOL = Object.freeze({ warmup: 150, window: 150 });
 export const RECORDING_STRESS = Object.freeze({ ...REPLAY_OPTIONS, makerFeeBps: 10, exitFeeBps: 10, slippageBps: 10, gasMon: 0.0714 });
 
-export function evaluateRecording(frames: readonly ChainFrame[], manifest: RecordingManifest) {
+export function validateRecording(frames: readonly ChainFrame[], manifest: RecordingManifest) {
   if (manifest.version !== 1 || manifest.endpoint !== PUBLIC_RPC || manifest.chainId !== 143 || manifest.market !== PAPER_MARKET) throw new Error("Recording source identity mismatch");
   if (!Number.isSafeInteger(manifest.requestedStart) || !Number.isSafeInteger(manifest.requestedEnd) || !Number.isSafeInteger(manifest.requestedBlocks) || manifest.requestedBlocks < 1 || manifest.requestedBlocks > 600 || manifest.requestedEnd - manifest.requestedStart + 1 !== manifest.requestedBlocks || manifest.completeBlocks !== frames.length || manifest.missingBlocks !== manifest.requestedBlocks - frames.length || manifest.missingBlocks < 0) throw new Error("Recording range/count mismatch");
   if (manifest.datasetSha256 !== historicalHash(frames)) throw new Error("Recording dataset checksum mismatch");
@@ -22,6 +22,10 @@ export function evaluateRecording(frames: readonly ChainFrame[], manifest: Recor
   frames.forEach((frame, i) => {
     if (!/^0x[0-9a-f]{64}$/i.test(frame.blockHash) || !/^0x[0-9a-f]{64}$/i.test(frame.parentHash) || i && frame.parentHash !== frames[i - 1]!.blockHash) throw new Error("Recording block hashes are discontinuous");
   });
+}
+
+export function evaluateRecording(frames: readonly ChainFrame[], manifest: RecordingManifest) {
+  validateRecording(frames, manifest);
   const { warmup, window } = RECORDING_PROTOCOL;
   const sufficient = frames.length >= warmup + window;
   const cases = sufficient ? [{ name: "base", options: REPLAY_OPTIONS }, { name: "higherCosts", options: RECORDING_STRESS }].map(({ name, options }) => {

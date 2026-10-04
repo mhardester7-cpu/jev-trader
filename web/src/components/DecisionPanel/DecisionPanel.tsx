@@ -49,7 +49,7 @@ function BarRow({ label, labelColor, active, value, fill, pct }: BarRowProps) {
 
 export default function DecisionPanel({ latest }: DecisionPanelProps) {
   const decision = latest?.decision ?? null;
-  const late = decision ? decision.late : true;
+  const late = decision?.late === true;
   // "hold" is treated as a non-decision, exactly as the feed does.
   const chosen: Chosen =
     decision && !decision.late && decision.action !== "hold"
@@ -60,20 +60,20 @@ export default function DecisionPanel({ latest }: DecisionPanelProps) {
   const decided = decision !== null && !late && chosen !== null;
   const pctOf = (p: number) => (decided ? fmtPct(p) : "-");
 
-  const headline = chosen ? (chosen === "buy" ? "BUY" : "SELL") : "LATE";
+  const headline = chosen ? (chosen === "buy" ? "BUY" : "SELL") : late ? "LATE" : decision ? "HOLD" : latest ? "NO CALL" : "WAITING";
   const headlineColor = chosen
     ? chosen === "buy"
       ? "var(--buy-ink)"
       : "var(--sell-ink)"
-    : "var(--late-ink)";
+    : late ? "var(--late-ink)" : "var(--muted)";
   const headlinePct = chosen ? fmtPct(probs[chosen]) : "";
 
   return (
     <div className={styles.panel}>
       <section className={styles.section}>
-        <div className={styles.sectionLabel}>STANDING ORDER</div>
+        <div className={styles.sectionLabel}>PAPER POLICY</div>
         <div className={styles.order}>
-          {"> post a bid or an ask on Kuru's MON/USDC book. every block. no abstaining."}
+          Jev selects buy or sell from completed data. Paper orders require funds and risk approval. Fills can occur only in the next recorded block.
         </div>
       </section>
 

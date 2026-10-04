@@ -2,7 +2,11 @@
 
 MON-USDC on Kuru/Monad, with a TypeSafe AI Jev adapter and an offline mock heuristic. This branch disables real wallets, signing, deposits, approvals, and order submission. `PRIVATE_KEY` is ignored; `DRY_RUN=false` fails at startup. No environment setting enables live trading.
 
-The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). The selected free workflow replays a saved authentic historical sample with the original fast mock policy. No Jev evaluation has been performed. Short historical replays and synthetic checks do not establish investment performance.
+The original repository was a demo, not a validated profitable strategy. See [the audit and research limits](docs/PAPER_AUDIT.md). The local dashboard now prepares real Jev decisions on recorded market data with a guarded inference budget. The earlier free mock replay remains a separate offline research tool. No real Jev evaluation has been performed yet. Short historical replays and synthetic checks do not establish investment performance.
+
+## Jev dashboard on your Mac
+
+Run `bun run paper:dashboard` and open **http://127.0.0.1:3001** on the Mac. The dashboard starts idle and is wired for actual Jev decisions on the saved market data, with local paper-only execution. It requires private key entry and explicit per-run spending approval before any model call. The initial proposal is ten requests, $0.03 and two minutes. It never substitutes mock decisions. See [setup, limits, secure key entry and phone access](docs/JEV_DASHBOARD.md). A real Jev API call has not yet been made or validated.
 
 ## Offline quick start
 
@@ -91,12 +95,14 @@ The Jev adapter uses `TYPESAFE_AI_API_KEY` (AI SDK naming) and defaults to pinne
 | `src/replay.ts` | Frozen mock strategy, chronological evaluation and benchmarks |
 | `src/historical.ts`, `scripts/paper-collect.ts` | Bounded historical public reads, cache integrity and complete-window decoding |
 | `src/recording-report.ts`, `scripts/paper-free-replay.ts` | Verified offline historical report and fixed cost stress case |
+| `src/jev-budget.ts`, `src/jev-request.ts`, `src/jev-session.ts` | Bounded actual Jev evaluation, token-cost accounting and separate recorded-data paper account |
+| `scripts/paper-dashboard.ts`, `src/dashboard-server.ts`, `web/` | Loopback-only UI/API, private per-run key entry and start/stop controls |
 | `src/state.ts` | Shared causal market features |
 | `src/trader.ts` | Sequential paper loop, freshness gates, session recordings |
 | `src/model.ts` | Jev adapter and unchanged mock signal |
 | `src/market.ts`, `src/book.ts` | Block-pinned reads and tick-aligned quotes; wallet is always null |
 | `tests/` | Offline regression tests; unexpected fetch calls fail |
 
-The web app still defaults to the pre-existing Railway API URL; it is not connected to the managed local account. No local dashboard has been exposed or deployed.
+The web app now connects through its same-origin local paper proxy. It displays the separate guarded Jev recorded-data session; it does not read the older public or fixture accounts. The launcher binds only to the Mac's loopback interface. No dashboard has been publicly exposed or deployed.
 
 Legacy transaction encoding/receipt code remains in `Market` for reference but is unreachable with its fixed null wallet. Historical `SPEC.md` and earlier demo marketing do not authorize real trading. The initial safety changes were merged in PR #1 after approval. These local operating changes require separate review; they add no deployment or schedule.
